@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>LMS Analisis Regresi · Kelas 02</title>
+    <!-- Font Awesome for crisp icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'Inter', 'Poppins', system-ui, sans-serif;
+        }
+
+        /* Fresh gradient background - statistics / regression vibe */
+        .regression-dashboard {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+            background: linear-gradient(135deg, #ecf9ff 0%, #d4ecff 50%, #c0e1ff 100%);
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 0 100px rgba(255, 255, 255, 0.7);
+        }
+
+        /* Animated statistical elements (blobs with light grid) */
+        .stat-bg {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            opacity: 0.3;
+        }
+        .grid-line {
+            position: absolute;
+            background: rgba(0, 100, 180, 0.08);
+            width: 100%;
+            height: 1px;
+            top: 20%;
+            transform: rotate(0.5deg);
+            box-shadow: 0 0 10px #8fcbff;
+        }
+        .grid-line:nth-child(1) { top: 30%; }
+        .grid-line:nth-child(2) { top: 50%; }
+        .grid-line:nth-child(3) { top: 70%; }
+        .grid-line:nth-child(4) { top: 90%; transform: rotate(-0.3deg); }
+        
+        .scatter-dots {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-image: radial-gradient(circle at 10% 30%, #0088ff20 3px, transparent 3px),
+                              radial-gradient(circle at 25% 70%, #0066cc20 4px, transparent 4px),
+                              radial-gradient(circle at 70% 20%, #3f9eff20 3px, transparent 3px),
+                              radial-gradient(circle at 85% 80%, #0077be20 5px, transparent 5px),
+                              radial-gradient(circle at 45% 55%, #0099ff20 4px, transparent 4px);
+            background-size: 200px 200px;
+        }
+
+        /* header modern glass with regression touch */
+        .glass-header {
+            position: relative;
+            z-index: 20;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 40px;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.9);
+            box-shadow: 0 10px 30px -15px #3b8fd9;
+            margin: 15px 30px 0 30px;
+            border-radius: 70px;
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .stat-icon {
+            background: linear-gradient(145deg, #007acc, #004e8c);
+            color: white;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 18px;
+            font-size: 26px;
+            box-shadow: 0 10px 20px -8px #025396;
+        }
+        .logo-text {
+            font-size: 22px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #014a81, #003766);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .logo-small {
+            color: #0165a3;
+            font-weight: 600;
+            background: rgba(255,255,255,0.6);
+            padding: 4px 16px;
+            border-radius: 40px;
+            font-size: 15px;
+            margin-left: 10px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+        .nav-links a {
+            text-decoration: none;
+            color: #014275;
+            font-weight: 600;
+            font-size: 16px;
+            transition: 0.2s;
+            padding: 6px 0;
+            border-bottom: 3px solid transparent;
+        }
+        .nav-links a:hover {
+            border-bottom-color: #0284c7;
+            color: #002b4a;
+        }
+        .regress-pill {
+            background: linear-gradient(145deg, #0270b3, #015396);
+            color: white !important;
+            padding: 10px 32px !important;
+            border-radius: 60px;
+            border: 1px solid rgba(255,255,255,0.7);
+            box-shadow: 0 12px 20px -12px #024e89;
+            font-weight: 600;
+        }
+        .regress-pill:hover {
+            background: #0263a5;
+            border-bottom-color: transparent !important;
+            transform: scale(1.02);
+        }
+
+        /* main content grid - 3 rows */
+        .content-grid {
+            position: relative;
+            z-index: 15;
+            flex: 1;
+            display: grid;
+            grid-template-rows: 1.1fr 1fr 0.9fr;
+            gap: 18px;
+            padding: 20px 35px 20px 35px;
+        }
+
+        /* row 1 - hero regression */
+        .hero-card {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 60px;
+            padding: 25px 40px;
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            box-shadow: 0 30px 40px -25px #2670b0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .hero-left h1 {
+            font-size: 3.2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #00315e, #005fa3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            line-height: 1.2;
+        }
+        .hero-left .kelas {
+            font-size: 1.5rem;
+            color: #014683;
+            margin: 8px 0 12px;
+            font-weight: 600;
+        }
+        .hero-badge {
+            background: white;
+            border-radius: 60px;
+            padding: 12px 30px;
+            color: #01539b;
+            font-weight: 700;
+            font-size: 1.2rem;
+            border: 1px solid #c2e0ff;
+            box-shadow: 0 6px 18px -8px #aad0ff;
+            display: inline-block;
+        }
+        .hero-right {
+            font-size: 6rem;
+            filter: drop-shadow(0 10px 15px #7bb9fe);
+            opacity: 0.9;
+            animation: floatReg 6s infinite alternate ease;
+        }
+        @keyframes floatReg {
+            0% { transform: translateY(0) rotate(0deg); }
+            100% { transform: translateY(-15px) rotate(3deg); }
+        }
+
+        /* row 2 - tiga core feature untuk analisis regresi */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 22px;
+        }
+        .reg-card {
+            background: rgba(255, 255, 255, 0.65);
+            backdrop-filter: blur(16px);
+            border-radius: 44px;
+            padding: 28px 15px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.9);
+            box-shadow: 0 20px 30px -15px #4d93d4;
+            transition: 0.3s cubic-bezier(0.1, 0.7, 0.3, 1.2);
+        }
+        .reg-card:hover {
+            transform: translateY(-12px) scale(1.02);
+            background: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 30px 35px -10px #2e7ec4;
+        }
+        .reg-icon {
+            font-size: 58px;
+            color: #015d9e;
+            filter: drop-shadow(0 8px 12px #b2d6ff);
+        }
+        .reg-card h3 {
+            font-size: 32px;
+            font-weight: 700;
+            color: #014581;
+            margin: 12px 0 8px;
+        }
+        .reg-card p {
+            color: #1d4b70;
+            font-weight: 500;
+            font-size: 16px;
+            max-width: 240px;
+            margin: 0 auto;
+        }
+
+        /* row 3 - kolom kiri materi preview, kanan akses cepat */
+        .split-layout {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 22px;
+        }
+        .material-panel {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(16px);
+            border-radius: 48px;
+            padding: 20px 30px;
+            border: 1px solid rgba(255,255,255,0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            box-shadow: 0 15px 35px -15px #5396d6;
+        }
+        .material-header {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            margin-bottom: 15px;
+        }
+        .material-header img {
+            width: 60px;
+            height: 60px;
+            filter: drop-shadow(0 4px 8px #90c0ff);
+        }
+        .material-header h2 {
+            font-size: 34px;
+            font-weight: 700;
+            color: #00315e;
+        }
+        .material-desc {
+            color: #015587;
+            font-size: 18px;
+            font-weight: 500;
+            margin-bottom: 20px;
+        }
+        .mini-lecture {
+            background: linear-gradient(145deg, #f0f8ff, #ffffff);
+            border-radius: 30px;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #003f73;
+            font-weight: 600;
+            font-size: 17px;
+            border: 2px dashed #9dc9ff;
+            gap: 18px;
+        }
+        .mini-lecture i {
+            font-size: 32px;
+            color: #0070c0;
+        }
+
+        .access-panel {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(16px);
+            border-radius: 48px;
+            padding: 20px 30px;
+            border: 1px solid white;
+            box-shadow: 0 25px 40px -20px #3483ce;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .access-panel h3 {
+            font-size: 36px;
+            font-weight: 800;
+            color: #002d55;
+            line-height: 1.2;
+        }
+        .access-panel .sub {
+            color: #1f5a87;
+            font-size: 18px;
+            margin: 5px 0 20px;
+        }
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        .btn-reg {
+            background: linear-gradient(145deg, #0273c0, #015396);
+            border: none;
+            color: white;
+            padding: 14px 30px;
+            border-radius: 60px;
+            font-weight: 600;
+            font-size: 18px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 15px 20px -10px #024e86;
+            transition: 0.2s;
+            border: 1px solid #9ecbff;
+        }
+        .btn-outline-reg {
+            background: transparent;
+            border: 2px solid #0277ce;
+            color: #015396;
+            box-shadow: none;
+        }
+        .btn-outline-reg:hover {
+            background: #e5f2ff;
+        }
+        .btn-reg:hover {
+            background: #0263ad;
+            transform: translateY(-3px);
+        }
+        .btn-disabled {
+            opacity: 0.5;
+            background: #a2c3e0;
+            border-color: #c0d9f0;
+            pointer-events: none;
+        }
+
+        /* footer segar */
+        .modern-footer {
+            position: relative;
+            z-index: 20;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 40px;
+            margin: 0 30px 20px 30px;
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(12px);
+            border-radius: 50px;
+            color: #01518b;
+            font-weight: 500;
+            border: 1px solid rgba(255, 255, 255, 0.8);
+        }
+        .footer-links a {
+            color: #014d83;
+            text-decoration: none;
+            margin-left: 35px;
+            font-weight: 600;
+            transition: 0.2s;
+        }
+        .footer-links a:hover {
+            color: #00223b;
+        }
+
+        /* floating stat button */
+        .stat-bubble {
+            position: absolute;
+            bottom: 100px;
+            right: 40px;
+            background: white;
+            width: 64px;
+            height: 64px;
+            border-radius: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            color: #0070be;
+            box-shadow: 0 15px 30px -5px #2b80c0;
+            cursor: pointer;
+            transition: 0.2s;
+            z-index: 30;
+            border: 1px solid #c7e3ff;
+        }
+        .stat-bubble:hover {
+            transform: scale(1.1) rotate(5deg);
+            background: #ecf7ff;
+        }
+
+        /* no scroll */
+        body, html { overflow: hidden; }
+    </style>
+</head>
+<body>
+    <div class="regression-dashboard">
+        <!-- statistical background elements -->
+        <div class="stat-bg">
+            <div class="grid-line"></div>
+            <div class="grid-line"></div>
+            <div class="grid-line"></div>
+            <div class="grid-line"></div>
+            <div class="scatter-dots"></div>
+        </div>
+
+        <!-- header -->
+        <header class="glass-header">
+            <div class="logo-area">
+                <span class="stat-icon"><i class="fas fa-chart-line"></i></span>
+                <span class="logo-text">Analisis Regresi</span>
+                <span class="logo-small">Kelas 02</span>
+            </div>
+            <div class="nav-links">
+                <a href="#">Beranda</a>
+                <a href="#">Tugas</a>
+                <a href="#">Absensi</a>
+                <a href="#">Materi</a>
+                <a href="#">Nilai</a>
+                <a href="login/login.php" class="regress-pill"><i class="fas fa-arrow-right-to-bracket" style="margin-right: 8px;"></i>Login</a>
+            </div>
+        </header>
+
+        <!-- main grid -->
+        <div class="content-grid">
+            <!-- row 1: hero -->
+            <div class="hero-card">
+                <div class="hero-left">
+                    <h1>Analisis Regresi</h1>
+                    <div class="kelas">Kelas 02 · Semester Genap 2026</div>
+                </div>
+                <div class="hero-right">
+                    <i class="fas fa-chart-simple"></i>
+                </div>
+            </div>
+
+            <!-- row 2: tiga fitur spesifik regresi -->
+            <div class="features-grid">
+                <div class="reg-card">
+                    <div class="reg-icon"><i class="fas fa-chart-scatter"></i></div>
+                    <h3>Korelasi</h3>
+                    <p>Analisis hubungan antar variabel. Matrix korelasi & interpretasi.</p>
+                </div>
+                <div class="reg-card">
+                    <div class="reg-icon"><i class="fas fa-square-root-variable"></i></div>
+                    <h3>Regresi</h3>
+                    <p>Model linier sederhana & berganda. Estimasi parameter.</p>
+                </div>
+                <div class="reg-card">
+                    <div class="reg-icon"><i class="fas fa-clipboard-check"></i></div>
+                    <h3>Uji Asumsi</h3>
+                    <p>Normalitas, heteroskedastisitas, multikolinearitas.</p>
+                </div>
+            </div>
+
+            <!-- row 3: materi preview + akses -->
+            <div class="split-layout">
+                <!-- left: materi preview -->
+                <div class="material-panel">
+                    <div class="material-header">
+                        <img src="https://gcdncs.101.com/v0.1/static/edit_99/tmcms/class101/images/pc/home-2/home-s3-2.png" alt="tool" onerror="this.style.display='none';">
+                        <h2>Materi 4</h2>
+                    </div>
+                    <div class="material-desc">
+                        Regresi Berganda: konsep, asumsi, dan studi kasus SPSS.
+                    </div>
+                    <div class="mini-lecture">
+                        <i class="fas fa-play"></i> Pratinjau video kuliah (09:45)
+                    </div>
+                </div>
+                <!-- right: akses cepat -->
+                <div class="access-panel">
+                    <h3>Akses Kelas</h3>
+                    <div class="sub">Mahasiswa / Dosen Analisis Regresi</div>
+                    <div class="button-group">
+                        <a href="login/login.php" class="btn-reg"><i class="fas fa-user-graduate"></i> Mahasiswa</a>
+                        <a href="login/login.php" class="btn-reg btn-outline-reg"><i class="fas fa-chalkboard-teacher"></i> Dosen</a>
+                        <a href="#" class="btn-reg btn-disabled"><i class="fas fa-mobile-alt"></i> App</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- footer -->
+        <footer class="modern-footer">
+            <span>© 2026 LMS Analisis Regresi · Kelas 02</span>
+            <div class="footer-links">
+                <a href="#">Tentang</a>
+                <a href="#">Privasi</a>
+                <a href="#">Kontak</a>
+                <a href="#"><i class="fab fa-github"></i></a>
+                <a href="#"><i class="fab fa-linkedin"></i></a>
+            </div>
+        </footer>
+
+        <!-- floating bubble for quick stat -->
+        <div class="stat-bubble" id="statBubble">
+            <i class="fas fa-calculator"></i>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            const bubble = document.getElementById('statBubble');
+            bubble.addEventListener('click', () => {
+                alert('📊 Rencana Pembelajaran:\nPertemuan 4: Regresi Berganda\nPertemuan 5: Uji F dan t\nPertemuan 6: Aplikasi dengan R');
+            });
+        })();
+    </script>
+</body>
+</html>
