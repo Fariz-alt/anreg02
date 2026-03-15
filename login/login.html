@@ -1,0 +1,521 @@
+<?php
+session_start();
+require_once '../config/database.php';
+
+// Cek apakah sudah login
+if(isset($_SESSION['user_id'])) {
+    if($_SESSION['role'] == 'mahasiswa') {
+        header("Location: ../mahasiswa/dashboard.php");
+        exit();
+    } else if($_SESSION['role'] == 'dosen') {
+        header("Location: ../dosen/dashboard.php");
+        exit();
+    }
+}
+
+// Proses login jika ada POST - VERSI TANPA HASH (PASSWORD PLAIN)
+if(isset($_POST['login'])) {
+    $username = mysqli_real_escape_string($conn, $_POST['username']);
+    $password = $_POST['password']; // LANGSUNG PAKAI PLAIN TEXT, TANPA MD5
+    
+    // Query dengan password plain
+    $query = "SELECT * FROM users WHERE nim_nip = '$username' AND password = '$password'";
+    $result = mysqli_query($conn, $query);
+    
+    if(mysqli_num_rows($result) > 0) {
+        $user = mysqli_fetch_assoc($result);
+        
+        $_SESSION['user_id'] = $user['id'];
+        $_SESSION['nama'] = $user['nama'];
+        $_SESSION['role'] = $user['role'];
+        $_SESSION['nim_nip'] = $user['nim_nip'];
+        
+        // Redirect berdasarkan role
+        if($user['role'] == 'mahasiswa') {
+            header("Location: ../mahasiswa/dashboard.php");
+            exit();
+        } else {
+            header("Location: ../dosen/dashboard.php");
+            exit();
+        }
+    } else {
+        $error = "Username atau password salah!";
+    }
+}
+?>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login LMS · Analisis Regresi Kelas 02</title>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+        }
+
+        /* Container utama dengan background gradien biru muda */
+        .regression-login {
+            display: flex;
+            flex-direction: column;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, #ecf9ff 0%, #d4ecff 50%, #c0e1ff 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Background statistik (grid dan scatter dots) */
+        .stat-bg {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            opacity: 0.25;
+            pointer-events: none;
+        }
+        .grid-line {
+            position: absolute;
+            background: rgba(0, 100, 180, 0.1);
+            width: 100%;
+            height: 1px;
+            transform: rotate(0.5deg);
+            box-shadow: 0 0 10px #8fcbff;
+        }
+        .grid-line:nth-child(1) { top: 25%; }
+        .grid-line:nth-child(2) { top: 45%; }
+        .grid-line:nth-child(3) { top: 65%; }
+        .grid-line:nth-child(4) { top: 85%; transform: rotate(-0.3deg); }
+        
+        .scatter-dots {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                radial-gradient(circle at 10% 30%, #0088ff30 3px, transparent 3px),
+                radial-gradient(circle at 25% 70%, #0066cc30 4px, transparent 4px),
+                radial-gradient(circle at 70% 20%, #3f9eff30 3px, transparent 3px),
+                radial-gradient(circle at 85% 80%, #0077be30 5px, transparent 5px),
+                radial-gradient(circle at 45% 55%, #0099ff30 4px, transparent 4px);
+            background-size: 200px 200px;
+        }
+
+        /* Header modern memanjang */
+        .login-header {
+            position: relative;
+            z-index: 20;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 60px;
+            height: 70px;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255,255,255,0.9);
+            margin: 15px 30px 0 30px;
+            border-radius: 50px;
+            box-shadow: 0 10px 30px -12px #1e5e92;
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .stat-icon {
+            background: linear-gradient(145deg, #007acc, #004e8c);
+            color: white;
+            width: 42px;
+            height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 14px;
+            font-size: 22px;
+            box-shadow: 0 8px 14px -6px #025396;
+        }
+        .logo-text {
+            font-size: 20px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #014a81, #003766);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            white-space: nowrap;
+        }
+        .back-link {
+            color: #015396;
+            font-weight: 600;
+            text-decoration: none;
+            border: 1.5px solid #9ecbff;
+            padding: 8px 24px;
+            border-radius: 40px;
+            background: rgba(255,255,255,0.5);
+            transition: 0.2s;
+            font-size: 15px;
+        }
+        .back-link:hover {
+            background: white;
+        }
+
+        /* Main area dengan padding lebar */
+        .login-main {
+            position: relative;
+            z-index: 15;
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px 40px;
+            min-height: 0;
+        }
+
+        /* Card login proporsional */
+        .login-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 50px;
+            padding: 30px 45px;
+            width: 480px;
+            max-width: 90%;
+            border: 1px solid rgba(255, 255, 255, 0.95);
+            box-shadow: 0 30px 50px -25px #1b5d94;
+            transition: 0.3s;
+        }
+
+        .login-header-icon {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        .login-header-icon i {
+            font-size: 52px;
+            color: #015d9e;
+            background: rgba(255, 255, 255, 0.7);
+            padding: 18px;
+            border-radius: 50%;
+            box-shadow: 0 12px 20px -8px #7bb9fe;
+        }
+
+        .login-card h2 {
+            text-align: center;
+            font-size: 32px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #00315e, #005fa3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 4px;
+            letter-spacing: -0.5px;
+        }
+        .sub-title {
+            text-align: center;
+            color: #014d83;
+            font-weight: 600;
+            margin-bottom: 16px;
+            font-size: 16px;
+        }
+        .kelas-badge {
+            background: rgba(1, 83, 150, 0.1);
+            border: 1px solid #9ecbff;
+            border-radius: 40px;
+            padding: 6px 18px;
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #015396;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            color: #014275;
+            font-weight: 600;
+            font-size: 15px;
+            margin-left: 8px;
+        }
+        .input-wrapper {
+            display: flex;
+            align-items: center;
+            background: white;
+            border: 1px solid #cae1ff;
+            border-radius: 60px;
+            padding: 4px 18px;
+            transition: 0.2s;
+            box-shadow: 0 2px 6px rgba(0,100,200,0.05);
+        }
+        .input-wrapper i {
+            color: #0070c0;
+            font-size: 20px;
+            margin-right: 12px;
+            width: 22px;
+        }
+        .input-wrapper input {
+            width: 100%;
+            border: none;
+            background: transparent;
+            padding: 14px 0;
+            font-size: 16px;
+            outline: none;
+            color: #00315e;
+            font-weight: 500;
+        }
+        .input-wrapper input::placeholder {
+            color: #9bb9da;
+            font-weight: 400;
+            font-size: 15px;
+        }
+        .input-wrapper:focus-within {
+            border-color: #0284c7;
+            box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.15);
+        }
+
+        .btn-login {
+            width: 100%;
+            background: linear-gradient(145deg, #0273c0, #015396);
+            border: none;
+            color: white;
+            padding: 14px 20px;
+            border-radius: 60px;
+            font-weight: 700;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            box-shadow: 0 20px 25px -12px #024e86;
+            transition: 0.2s;
+            border: 1px solid #9ecbff;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .btn-login:hover {
+            background: #0263ad;
+            transform: translateY(-2px);
+            box-shadow: 0 22px 30px -15px #024e86;
+        }
+
+        .error-message {
+            background: rgba(255, 255, 255, 0.9);
+            border-left: 6px solid #dc2626;
+            border-radius: 30px;
+            padding: 14px 18px;
+            margin-bottom: 22px;
+            color: #b91c1c;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            backdrop-filter: blur(5px);
+            font-size: 15px;
+        }
+        .error-message i {
+            font-size: 24px;
+            color: #dc2626;
+        }
+
+        .links {
+            margin-top: 24px;
+            text-align: center;
+        }
+        .links a {
+            color: #015396;
+            text-decoration: none;
+            font-weight: 600;
+            padding: 8px 24px;
+            border-radius: 40px;
+            background: rgba(255, 255, 255, 0.7);
+            border: 1px solid #bbd9ff;
+            transition: 0.2s;
+            display: inline-block;
+            font-size: 15px;
+        }
+        .links a:hover {
+            background: white;
+        }
+
+        /* Info box untuk kredensial demo */
+        .info-box {
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 30px;
+            padding: 18px;
+            margin-top: 25px;
+            border: 1px solid rgba(255,255,255,0.8);
+        }
+        .info-box p {
+            color: #014275;
+            font-weight: 600;
+            margin-bottom: 12px;
+            font-size: 14px;
+        }
+        .credentials {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        .cred-item {
+            background: white;
+            padding: 12px;
+            border-radius: 20px;
+            border: 1px solid #cae1ff;
+            font-size: 13px;
+            color: #014275;
+        }
+        .cred-item strong {
+            color: #0070c0;
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        /* Footer memanjang */
+        .login-footer {
+            position: relative;
+            z-index: 20;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 40px;
+            height: 55px;
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(12px);
+            border-radius: 40px;
+            margin: 0 30px 15px 30px;
+            color: #01518b;
+            font-weight: 500;
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            font-size: 14px;
+        }
+        .footer-links a {
+            color: #014d83;
+            text-decoration: none;
+            margin-left: 30px;
+            font-weight: 600;
+            transition: 0.2s;
+            font-size: 14px;
+        }
+        .footer-links a:hover {
+            color: #00223b;
+        }
+
+        /* No scroll */
+        body, html { overflow: hidden; }
+    </style>
+</head>
+<body>
+    <div class="regression-login">
+        <!-- Background statistik -->
+        <div class="stat-bg">
+            <div class="grid-line"></div>
+            <div class="grid-line"></div>
+            <div class="grid-line"></div>
+            <div class="grid-line"></div>
+            <div class="scatter-dots"></div>
+        </div>
+
+        <!-- Header -->
+        <header class="login-header">
+            <div class="logo-area">
+                <span class="stat-icon"><i class="fas fa-code"></i></span>
+                <span class="logo-text">Analisis Regresi · Kelas 02</span>
+            </div>
+            <a href="../index.php" class="back-link"><i class="fas fa-arrow-left" style="margin-right: 6px;"></i>Beranda</a>
+        </header>
+
+        <!-- Main content -->
+        <div class="login-main">
+            <div class="login-card">
+                <div class="login-header-icon">
+                    <i class="fas fa-laptop-code"></i>
+                </div>
+                <h2>Login LMS</h2>
+                <div class="sub-title">Mahasiswa / Dosen</div>
+                <div class="text-center" style="text-align: center;">
+                    <span class="kelas-badge"><i class="far fa-calendar-alt" style="margin-right: 6px;"></i>Sudah 3 Pertemuan</span>
+                </div>
+                
+                <?php if(isset($error)): ?>
+                <div class="error-message">
+                    <i class="fas fa-circle-exclamation"></i>
+                    <span><?= $error ?></span>
+                </div>
+                <?php endif; ?>
+
+                <form method="POST" action="">
+                    <div class="form-group">
+                        <label>NIM / NIP</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-id-card"></i>
+                            <input type="text" name="username" placeholder="Masukkan NIM atau NIP" required autofocus>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-key"></i>
+                            <input type="password" name="password" placeholder="••••••••" required>
+                        </div>
+                    </div>
+                    <button type="submit" name="login" class="btn-login">
+                        <i class="fas fa-arrow-right-to-bracket"></i> Login
+                    </button>
+                </form>
+
+                <div class="links">
+                    <a href="lupa_password.php"><i class="far fa-question-circle"></i> Lupa Password?</a>
+                </div>
+
+                <div class="info-box">
+                    <p><i class="fas fa-info-circle" style="margin-right: 6px;"></i> <strong>Akun Demo:</strong></p>
+                    <div class="credentials">
+                        <div class="cred-item">
+                            <strong><i class="fas fa-user-graduate"></i> Mahasiswa</strong>
+                            NIM: M001<br>
+                            Pass: 123
+                        </div>
+                        <div class="cred-item">
+                            <strong><i class="fas fa-chalkboard-teacher"></i> Dosen</strong>
+                            NIP: D001<br>
+                            Pass: 123
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="login-footer">
+            <span>© 2025 LMS Pemrograman Web · Kelas A</span>
+            <div class="footer-links">
+                <a href="#">Bantuan</a>
+                <a href="#">Privasi</a>
+                <a href="#">Kontak</a>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // Auto-focus ke input username
+        document.querySelector('input[name="username"]').focus();
+        
+        // Debug: pastikan form bisa di-submit
+        document.querySelector('form').addEventListener('submit', function(e) {
+            console.log('Form submitted with username:', document.querySelector('input[name="username"]').value);
+        });
+    </script>
+</body>
+</html>
